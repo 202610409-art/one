@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>분리수거 왕 - 지구를 구하는 재활용 특공대</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font (Noto Sans KR) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti Library for Fireworks -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Recycling Station Wall & Floor Background */
+        .recycling-depot-bg {
+            background: 
+                radial-gradient(circle at 50% 20%, rgba(16, 185, 129, 0.15) 0%, transparent 70%),
+                linear-gradient(to bottom, #1e293b 0%, #0f172a 60%, #334155 60%, #1e293b 100%);
+        }
+
+        /* Sorting Station Platform Pattern */
+        .sorting-table-pattern {
+            background-color: #334155;
+            background-image: repeating-linear-gradient(
+                45deg,
+                #475569 25%,
+                transparent 25%,
+                transparent 50%,
+                #475569 50%,
+                #475569 75%,
+                transparent 75%,
+                transparent 100%
+            );
+            background-size: 40px 40px;
+        }
+
+        .bin-hover {
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .bin-hover:hover {
+            transform: translateY(-6px) scale(1.03);
+            box-shadow: 0 15px 20px -5px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Drag over bin target highlight */
+        .bin-drag-target {
+            transform: translateY(-10px) scale(1.08) !important;
+            box-shadow: 0 0 25px rgba(52, 211, 153, 0.9) !important;
+            border-color: #34d399 !important;
+        }
+
+        .shake {
+            animation: shake 0.4s ease-in-out;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px) rotate(-3deg); }
+            40%, 80% { transform: translateX(10px) rotate(3deg); }
+        }
+
+        .bounce-heart {
+            animation: heartPulse 1.2s infinite alternate ease-in-out;
+        }
+        @keyframes heartPulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.2); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .dragging-ghost {
+            opacity: 0.4;
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-800 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- Header Navigation Bar -->
+    <header class="bg-emerald-700 text-white shadow-xl sticky top-0 z-50 border-b border-emerald-600">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="showScreen('start-screen')">
+                <div class="bg-white text-emerald-700 p-2 rounded-2xl shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-recycle text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-tight leading-none">분리수거 왕</h1>
+                    <span class="text-xs text-emerald-100 font-medium">스마트 클린 자원순환 센터</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                <button onclick="toggleAudio()" id="sound-btn" class="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 rounded-xl text-xs transition flex items-center space-x-1.5 border border-emerald-600 shadow" title="소리 켜기/끄기">
+                    <i class="fa-solid fa-volume-high" id="sound-icon"></i>
+                    <span class="hidden sm:inline font-bold" id="sound-text">효과음 On</span>
+                </button>
+                <button onclick="showScreen('guide-screen')" class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl text-xs transition flex items-center space-x-1 shadow">
+                    <i class="fa-solid fa-book-open"></i>
+                    <span>분리수거 백과</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-6xl w-full mx-auto p-3 sm:p-6 flex-grow flex flex-col justify-center">
+
+        <!-- 1. START SCREEN -->
+        <section id="start-screen" class="bg-white rounded-3xl shadow-2xl p-6 sm:p-10 text-center border border-slate-200 my-auto max-w-4xl mx-auto">
+            <div class="inline-block p-4 bg-emerald-50 text-emerald-600 rounded-3xl mb-4 bounce-heart shadow-inner">
+                <i class="fa-solid fa-earth-asia text-5xl sm:text-6xl"></i>
+            </div>
+            <h2 class="text-2xl sm:text-4xl font-black text-slate-800 mb-3">
+                손끝으로 지키는 <span class="text-emerald-600">푸른 지구!</span>
+            </h2>
+            <p class="text-slate-600 text-sm sm:text-base max-w-xl mx-auto mb-8 leading-relaxed">
+                쓰레기 그림을 마우스나 손가락으로 잡고 알맞은 분리수거함으로 **드래그(Drag & Drop)** 하세요!<br class="hidden sm:block">
+                올바르게 분리하면 점수를 얻지만, 틀리면 목숨(❤️)이 차감됩니다.
+            </p>
+
+            <!-- Mode Selection Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto mb-8 text-left">
+                <!-- Practice Mode Card -->
+                <div onclick="startGame('practice')" class="border-2 border-emerald-200 hover:border-emerald-500 rounded-3xl p-6 cursor-pointer transition-all hover:shadow-xl bg-emerald-50/40 group relative overflow-hidden">
+                    <div class="absolute right-3 top-3 opacity-10 text-emerald-600 text-7xl group-hover:scale-110 transition">
+                        <i class="fa-solid fa-hands-holding-circle"></i>
+                    </div>
+                    <div class="flex items-center justify-between mb-3 relative z-10">
+                        <span class="p-3 bg-emerald-500 text-white rounded-2xl group-hover:scale-110 transition shadow"><i class="fa-solid fa-graduation-cap text-2xl"></i></span>
+                        <span class="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">목숨 3개 부여</span>
+                    </div>
+                    <h3 class="text-lg font-black text-slate-800 mb-1 group-hover:text-emerald-600 transition relative z-10">기본 분리수거 모드</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed relative z-10">쓰레기를 drag 해서 분리수거함에 버려보세요. 틀린 항목은 오답노트로 복습이 가능합니다.</p>
+                </div>
+
+                <!-- Speed Challenge Mode Card -->
+                <div onclick="startGame('challenge')" class="border-2 border-amber-200 hover:border-amber-500 rounded-3xl p-6 cursor-pointer transition-all hover:shadow-xl bg-amber-50/40 group relative overflow-hidden">
+                    <div class="absolute right-3 top-3 opacity-10 text-amber-600 text-7xl group-hover:scale-110 transition">
+                        <i class="fa-solid fa-stopwatch"></i>
+                    </div>
+                    <div class="flex items-center justify-between mb-3 relative z-10">
+                        <span class="p-3 bg-amber-500 text-white rounded-2xl group-hover:scale-110 transition shadow"><i class="fa-solid fa-bolt text-2xl"></i></span>
+                        <span class="text-xs font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-full">60초 스피드</span>
+                    </div>
+                    <h3 class="text-lg font-black text-slate-800 mb-1 group-hover:text-amber-600 transition relative z-10">스피드 챌린지 모드</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed relative z-10">60초 제한시간 안에 신속하고 정확하게 쓰레기를 수거함으로 끌어다 넣으세요!</p>
+                </div>
+            </div>
+
+            <!-- Gameplay Tip Box -->
+            <div class="bg-slate-100 p-4 rounded-2xl border border-slate-200 max-w-2xl mx-auto flex items-center justify-center space-x-3 text-xs text-slate-600">
+                <i class="fa-solid fa-hand-pointer text-emerald-600 text-lg"></i>
+                <span><strong>플레이 조작법:</strong> 쓰레기 그림을 마우스로 꾹 누르고 분리수거함 위로 끌고 가서 놓으세요!</span>
+            </div>
+        </section>
+
+
+        <!-- 2. GAME PLAY SCREEN (RECYCLING DEPOT VISUAL) -->
+        <section id="game-screen" class="hidden flex flex-col space-y-4">
+            
+            <!-- HUD / Status Bar -->
+            <div class="bg-slate-800 text-white rounded-2xl p-4 shadow-xl border border-slate-700 flex flex-wrap justify-between items-center gap-3">
+                <!-- Mode Badge & Counter -->
+                <div class="flex items-center space-x-3">
+                    <span id="game-mode-badge" class="px-3 py-1 bg-emerald-500 text-slate-900 rounded-xl text-xs font-black shadow">기본 모드</span>
+                    <div class="text-slate-300 font-bold text-sm">
+                        남은 쓰레기: <span id="current-item-index" class="text-emerald-400 font-black text-base">1</span> / <span id="total-items-count">15</span>
+                    </div>
+                </div>
+
+                <!-- LIVES SYSTEM (Heart Display) -->
+                <div class="flex items-center bg-slate-900/80 px-4 py-1.5 rounded-2xl border border-rose-500/30 shadow-inner space-x-2">
+                    <span class="text-xs text-slate-400 font-bold mr-1">목숨:</span>
+                    <div id="lives-container" class="flex space-x-1.5 text-xl text-rose-500">
+                        <i class="fa-solid fa-heart bounce-heart"></i>
+                        <i class="fa-solid fa-heart bounce-heart"></i>
+                        <i class="fa-solid fa-heart bounce-heart"></i>
+                    </div>
+                </div>
+
+                <!-- Timer (Challenge mode) -->
+                <div id="timer-container" class="hidden flex items-center space-x-2 bg-amber-500/20 px-3 py-1 rounded-xl border border-amber-500/40">
+                    <i class="fa-solid fa-clock text-amber-400"></i>
+                    <span class="text-xs text-amber-200 font-semibold">남은시간:</span>
+                    <span id="timer-display" class="text-lg font-black text-amber-400 w-8 text-center">60</span>s
+                </div>
+
+                <!-- Score -->
+                <div class="flex items-center space-x-4">
+                    <div class="text-right">
+                        <div class="text-[10px] text-slate-400 font-bold uppercase">획득 점수</div>
+                        <div class="text-xl font-black text-emerald-400" id="score-display">0점</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recycling Station Depot Scene -->
+            <div class="recycling-depot-bg rounded-3xl p-4 sm:p-6 shadow-2xl relative overflow-hidden border-4 border-slate-700 flex flex-col justify-between min-h-[520px]">
+                
+                <!-- Depot Station Header Banner -->
+                <div class="bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-700/80 px-4 py-3 flex justify-between items-center text-slate-300 text-xs font-bold shadow-md">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping"></span>
+                        <span class="text-emerald-300 font-black text-sm"><i class="fa-solid fa-warehouse mr-1"></i> 제1 분리수거 분류 작업장</span>
+                    </div>
+                    <span id="hint-tooltip" class="text-slate-400 font-normal hidden sm:inline-block">
+                        <i class="fa-solid fa-hand-grab text-amber-400 mr-1"></i> 쓰레기 그림을 잡아 수거함으로 드래그하여 버리세요!
+                    </span>
+                </div>
+
+                <!-- Center Working Area: Draggable Trash Item Card (MAIN GRAPHIC CENTERED) -->
+                <div class="my-auto py-6 flex flex-col items-center justify-center relative min-h-[260px]">
+                    
+                    <!-- Sorting Conveyor Table Line -->
+                    <div class="w-full h-24 sorting-table-pattern rounded-2xl border-y-4 border-slate-600 shadow-2xl absolute top-1/2 -translate-y-1/2 z-0 flex items-center justify-between px-4 opacity-70">
+                        <div class="text-slate-500 text-xs font-black tracking-widest"><i class="fa-solid fa-angles-right"></i> 레일 작동 중</div>
+                        <div class="text-slate-500 text-xs font-black tracking-widest">스마트 분류 작업대 <i class="fa-solid fa-angles-right"></i></div>
+                    </div>
+
+                    <!-- DRAGGABLE GARBAGE ITEM CARD (COMPACT 1/4 SIZE) -->
+                    <div id="trash-item-card" 
+                         draggable="true" 
+                         class="z-10 bg-white/95 backdrop-blur px-4 py-3 rounded-2xl shadow-xl border-2 border-emerald-400 cursor-grab active:cursor-grabbing transition-transform hover:scale-105 flex flex-col items-center w-40 sm:w-48 mx-auto relative group select-none touch-none">
+                        
+                        <!-- Drag Indicator Badge -->
+                        <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm mb-1">
+                            <i class="fa-solid fa-hand-holding-dots text-[10px]"></i> 드래그하세요!
+                        </span>
+
+                        <!-- Main Trash Visual Graphic (Scaled down to 1/4 size) -->
+                        <div id="trash-icon" class="text-3xl sm:text-4xl my-1 drop-shadow transform group-hover:scale-105 transition duration-200 text-center">
+                            📦
+                        </div>
+
+                        <!-- Trash Name Title -->
+                        <h3 id="trash-name" class="text-sm font-black text-slate-800 text-center leading-snug">
+                            쓰레기 불러오는 중...
+                        </h3>
+
+                        <!-- Subtle Small Description Underneath -->
+                        <p id="trash-desc" class="text-[11px] text-slate-500 text-center mt-0.5 font-medium max-w-[150px] leading-tight">
+                            상태와 특징을 확인하고 드래그하세요
+                        </p>
+                    </div>
+
+                    <!-- Dynamic Feedback Popover Toast -->
+                    <div id="feedback-toast" class="absolute z-30 top-1 px-6 py-2.5 rounded-full font-black text-sm shadow-2xl transition-all duration-300 opacity-0 pointer-events-none transform -translate-y-4 border-2 border-white">
+                        정답입니다!
+                    </div>
+                </div>
+
+                <!-- Bottom: Recycling Bins Grid (Drop Targets Only) -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 sm:gap-3 z-10 pt-2" id="bins-grid">
+                    <!-- Bins dynamically injected via JS -->
+                </div>
+            </div>
+
+            <!-- Touch / Accessibility Help -->
+            <div class="text-center text-xs text-slate-400">
+                🖐️ <span class="text-emerald-400 font-bold">드래그 전용:</span> 클릭 버리기는 불가합니다. 쓰레기 그림을 마우스/손가락으로 꾹 눌러 수거함으로 끌어다 놓으세요!
+            </div>
+        </section>
+
+
+        <!-- 3. RESULT & REVIEW SCREEN -->
+        <section id="result-screen" class="hidden bg-white rounded-3xl shadow-2xl p-6 sm:p-10 border border-slate-200 my-auto max-w-4xl mx-auto">
+            <div class="text-center mb-8">
+                <div id="result-badge-icon" class="inline-block p-4 bg-emerald-100 text-emerald-600 rounded-3xl mb-3 shadow-inner">
+                    <i class="fa-solid fa-trophy text-5xl"></i>
+                </div>
+                <h2 class="text-2xl sm:text-4xl font-black text-slate-800 mb-1" id="result-title">분리수거 완료!</h2>
+                <p class="text-sm font-medium text-slate-500" id="result-subtitle">오늘 작업한 자원순환 센터 분류 보고서입니다.</p>
+            </div>
+
+            <!-- Score & Stats Cards -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center shadow-sm">
+                    <span class="text-xs text-slate-400 font-bold block mb-1">최종 점수</span>
+                    <span id="final-score" class="text-2xl sm:text-3xl font-black text-emerald-600">0점</span>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center shadow-sm">
+                    <span class="text-xs text-slate-400 font-bold block mb-1">정답률</span>
+                    <span id="final-accuracy" class="text-2xl sm:text-3xl font-black text-blue-600">0%</span>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center shadow-sm">
+                    <span class="text-xs text-slate-400 font-bold block mb-1">성공한 쓰레기</span>
+                    <span id="final-correct" class="text-2xl sm:text-3xl font-black text-emerald-600">0개</span>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center shadow-sm">
+                    <span class="text-xs text-slate-400 font-bold block mb-1">실패(오답)</span>
+                    <span id="final-wrong" class="text-2xl sm:text-3xl font-black text-rose-500">0개</span>
+                </div>
+            </div>
+
+            <!-- Environmental Impact Card -->
+            <div class="bg-slate-900 text-white p-6 rounded-3xl mb-8 shadow-xl relative overflow-hidden border border-slate-800">
+                <div class="absolute -right-6 -bottom-6 text-emerald-500/10 text-9xl">
+                    <i class="fa-solid fa-leaf"></i>
+                </div>
+                <h4 class="text-xs font-black text-emerald-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-seedling text-base"></i> 나의 환경 보호 기여도
+                </h4>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left relative z-10">
+                    <div>
+                        <p class="text-xs text-slate-400 font-bold">탄소 절감량</p>
+                        <p class="text-xl font-black text-emerald-300"><span id="impact-co2">0</span> kg CO₂</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 font-bold">소나무 심기 효과</p>
+                        <p class="text-xl font-black text-emerald-300"><span id="impact-trees">0</span> 그루</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 font-bold">절약한 전력</p>
+                        <p class="text-xl font-black text-emerald-300"><span id="impact-energy">0</span> Wh</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mistakes Review Notebook Section -->
+            <div class="mb-8">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-question text-rose-500"></i> 오답 피드백 노트
+                    </h3>
+                    <!-- Special Button: Retry Only Mistakes -->
+                    <button id="retry-mistakes-btn" onclick="retryOnlyMistakes()" class="hidden px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-black rounded-xl text-xs transition shadow-md flex items-center gap-1.5 animate-bounce">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>틀린 문제만 다시 풀어보기 (<span id="wrong-count-badge">0</span>개)</span>
+                    </button>
+                </div>
+                
+                <div id="mistakes-container" class="space-y-3 max-h-72 overflow-y-auto pr-1">
+                    <!-- Dynamic Mistake Cards -->
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+                <button onclick="showScreen('start-screen')" class="px-6 py-3.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-black rounded-2xl transition text-sm">
+                    <i class="fa-solid fa-house mr-1"></i> 메인 화면으로
+                </button>
+                <button onclick="startGame('practice')" class="px-7 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg transition text-sm">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> 처음부터 다시 시작
+                </button>
+            </div>
+        </section>
+
+
+        <!-- 4. RECYCLING DICTIONARY & ENCYCLOPEDIA SCREEN -->
+        <section id="guide-screen" class="hidden bg-white rounded-3xl shadow-2xl p-6 sm:p-10 border border-slate-200 my-auto max-w-4xl mx-auto">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-book-bookmark text-amber-500"></i> 분리수거 통합 백과
+                    </h2>
+                    <p class="text-xs font-medium text-slate-500 mt-1">헷갈리는 쓰레기 버리는 법을 검색해 보세요.</p>
+                </div>
+                <button onclick="showScreen('start-screen')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition self-start sm:self-auto">
+                    <i class="fa-solid fa-xmark mr-1"></i> 닫기
+                </button>
+            </div>
+
+            <!-- Search Input -->
+            <div class="relative mb-6">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="guide-search" oninput="filterGuideItems()" placeholder="쓰레기 이름 검색 (예: 페트병, 우유팩, 부탄가스, 뼈)..." class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+
+            <!-- Category Filter Tabs -->
+            <div class="flex flex-wrap gap-2 mb-6" id="guide-category-tabs">
+                <button onclick="filterGuideCategory('all')" class="guide-tab active px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white">전체 보기</button>
+                <button onclick="filterGuideCategory('pet')" class="guide-tab px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">투명페트</button>
+                <button onclick="filterGuideCategory('plastic')" class="guide-tab px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">플라스틱</button>
+                <button onclick="filterGuideCategory('paper')" class="guide-tab px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">종이/팩</button>
+                <button onclick="filterGuideCategory('can')" class="guide-tab px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">캔/고철</button>
+                <button onclick="filterGuideCategory('glass')" class="guide-tab px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">유리병</button>
+                <button onclick="filterGuideCategory('vinyl')" class="guide-tab px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">비닐류</button>
+                <button onclick="filterGuideCategory('general')" class="guide-tab px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">일반쓰레기</button>
+                <button onclick="filterGuideCategory('food')" class="guide-tab px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">음식물</button>
+            </div>
+
+            <!-- Dictionary Grid Items -->
+            <div id="guide-items-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
+                <!-- Dynamic Injection -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer Info -->
+    <footer class="bg-slate-950 text-slate-400 text-xs py-4 text-center border-t border-slate-800">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <p>🌍 <strong>분리수거 왕:</strong> 올바른 분리 배출 문화 정착을 위한 환경 교육 가이드</p>
+            <p class="text-emerald-400 font-bold">4대 원칙: 비운다 • 헹군다 • 분리한다 • 섞지 않는다</p>
+        </div>
+    </footer>
+
+    <!-- GAME LOGIC & ENGINE SCRIPT -->
+    <script>
+        // RECYCLING BINS DATABASE
+        const RECYCLING_BINS = [
+            { id: 'pet', name: '투명페트', icon: 'fa-bottle-water', color: 'bg-cyan-600', hover: 'hover:bg-cyan-500', desc: '라벨 제거 필수' },
+            { id: 'plastic', name: '플라스틱', icon: 'fa-wine-bottle', color: 'bg-blue-600', hover: 'hover:bg-blue-500', desc: '플라스틱 용기류' },
+            { id: 'paper', name: '종이/팩', icon: 'fa-box-archive', color: 'bg-amber-600', hover: 'hover:bg-amber-500', desc: '상자, 종이팩' },
+            { id: 'can', name: '캔/고철', icon: 'fa-drum', color: 'bg-slate-600', hover: 'hover:bg-slate-500', desc: '음료캔, 부탄가스' },
+            { id: 'glass', name: '유리병', icon: 'fa-glass-water', color: 'bg-emerald-600', hover: 'hover:bg-emerald-500', desc: '음료, 잡병' },
+            { id: 'vinyl', name: '비닐류', icon: 'fa-sheet-plastic', color: 'bg-purple-600', hover: 'hover:bg-purple-500', desc: '깨끗한 비닐' },
+            { id: 'general', name: '일반쓰레기', icon: 'fa-trash-can', color: 'bg-rose-700', hover: 'hover:bg-rose-600', desc: '재활용 불가' },
+            { id: 'food', name: '음식물', icon: 'fa-apple-whole', color: 'bg-yellow-600', hover: 'hover:bg-yellow-500', desc: '동물 사료 가능' }
+        ];
+
+        // TRASH ITEMS DATABASE
+        const TRASH_DATABASE = [
+            { id: 't1', name: '투명 생수병', icon: '🥤', correctBin: 'pet', desc: '라벨이 붙어있는 깨끗한 페트병', explanation: '라벨 테이프를 떼어내고 찌그러뜨린 뒤 투명 페트병 전용함에 배출합니다.', co2Savings: 0.25 },
+            { id: 't2', name: '택배 종이상자', icon: '📦', correctBin: 'paper', desc: '송장 스티커와 테이프가 붙은 상자', explanation: '비닐 테이프와 운송장 스티커를 반드시 떼어낸 후 납작하게 펼쳐서 종이로 배출합니다.', co2Savings: 0.3 },
+            { id: 't3', name: '양념 묻은 컵라면 용기', icon: '🍜', correctBin: 'general', desc: '빨간 국물이 착색된 스티로폼 컵', explanation: '씻어도 빨갛게 착색되어 지워지지 않는 용기는 재활용이 불가능하므로 일반쓰레기(종량제 봉투)로 버립니다.', co2Savings: 0.1 },
+            { id: 't4', name: '치킨 뼈 / 족발 뼈', icon: '🍗', correctBin: 'general', desc: '살코기를 다 먹고 남은 딱딱한 뼈', explanation: '동물이 먹을 수 없는 딱딱한 뼈는 음식물이 아니라 일반쓰레기(종량제 봉투)로 버려야 합니다.', co2Savings: 0.1 },
+            { id: 't5', name: '깨끗한 과자 비닐봉지', icon: '🍿', correctBin: 'vinyl', desc: '이물질 없이 깨끗이 비운 봉지', explanation: '음식물이 묻어있지 않고 이물질을 털어낸 비닐은 비닐류 수거함에 모아서 배출합니다.', co2Savings: 0.15 },
+            { id: 't6', name: '음료수 통조림 캔', icon: '🥫', correctBin: 'can', desc: '내용물을 비운 알루미늄 캔', explanation: '내용물을 헹구고 불순물을 제거한 뒤 찌그러뜨려 캔/고철류로 배출합니다.', co2Savings: 0.4 },
+            { id: 't7', name: '사과 껍질', icon: '🍎', correctBin: 'food', desc: '수분이 있는 과일 껍질', explanation: '동물 사료나 퇴비로 재활용 가능한 부드러운 과일 껍질은 음식물 쓰레기입니다.', co2Savings: 0.2 },
+            { id: 't8', name: '헌 칫솔', icon: '🪥', correctBin: 'general', desc: '칫솔모와 고무가 섞인 칫솔', explanation: '고무, 솔, 플라스틱 등이 복합 결합되어 재활용 분리가 안 되므로 일반쓰레기로 버립니다.', co2Savings: 0.05 },
+            { id: 't9', name: '유리 음료수병', icon: '🍾', correctBin: 'glass', desc: '내용물을 비운 깨끗한 병', explanation: '병뚜껑을 분리하고 내부를 헹군 후 깨지지 않은 상태로 유리병 수거함에 버립니다.', co2Savings: 0.35 },
+            { id: 't10', name: '우유 종이팩', icon: '🥛', correctBin: 'paper', desc: '물로 씻고 펼쳐 말린 종이팩', explanation: '일반 종이와 달리 고급 수입 파지이므로 씻고 펼쳐서 종이팩 전용함이나 종이류로 배출합니다.', co2Savings: 0.25 },
+            { id: 't11', name: '부탄가스 캔', icon: '🔥', correctBin: 'can', desc: '사용 후 구멍을 뚫은 부탄가스 캔', explanation: '통풍이 잘되는 야외에서 구멍을 뚫어 가스를 완전히 빼낸 뒤 캔류로 배출합니다.', co2Savings: 0.3 },
+            { id: 't12', name: '달걀 껍데기', icon: '🥚', correctBin: 'general', desc: '요리 후 남은 단단한 계란 껍질', explanation: '달걀/메추리알 껍데기는 석회질이라 동물 사료로 쓸 수 없어 일반쓰레기로 버립니다.', co2Savings: 0.1 },
+            { id: 't13', name: '깨끗한 샴푸 용기', icon: '🧴', correctBin: 'plastic', desc: '물로 헹군 플라스틱 통', explanation: '펌프 내부의 스프링(철)을 제거하거나 내용물을 헹군 뒤 일반 플라스틱으로 배출합니다.', co2Savings: 0.25 },
+            { id: 't14', name: '깨진 유리 조각', icon: '🍷', correctBin: 'general', desc: '신문지에 싸서 버리는 깨진 유리', explanation: '깨진 유리는 재활용이 불가능하고 수거 시 위험하므로 신문지로 싸서 일반쓰레기(종량제)로 버립니다.', co2Savings: 0.05 },
+            { id: 't15', name: '기름때 묻은 피자 상자', icon: '🍕', correctBin: 'general', desc: '기름과 양념이 밴 종이 상자', explanation: '기름과 양념이 배어든 종이는 재활용 종이 원료로 재생이 안 되므로 일반쓰레기로 버립니다.', co2Savings: 0.1 }
+        ];
+
+        // APP STATE MANAGEMENT
+        let appState = {
+            screen: 'start-screen',
+            mode: 'practice', // 'practice' or 'challenge'
+            soundEnabled: true,
+            score: 0,
+            lives: 3,
+            maxLives: 3,
+            currentIndex: 0,
+            timer: 60,
+            timerInterval: null,
+            playlist: [],
+            wrongAnswers: [],
+            correctCount: 0,
+            isRetryMode: false
+        };
+
+        // WEB AUDIO SYNTHESIZER (Custom Sound Effects)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (!appState.soundEnabled) return;
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'correct') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                    osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+                    osc.frequency.exponentialRampToValueAtTime(783.99, audioCtx.currentTime + 0.2); // G5
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.35);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(140, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.35);
+                } else if (type === 'click') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.08);
+                } else if (type === 'fanfare') {
+                    const now = audioCtx.currentTime;
+                    const notes = [523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, idx) => {
+                        const noteOsc = audioCtx.createOscillator();
+                        const noteGain = audioCtx.createGain();
+                        noteOsc.type = 'triangle';
+                        noteOsc.frequency.setValueAtTime(freq, now + idx * 0.12);
+                        noteGain.gain.setValueAtTime(0.25, now + idx * 0.12);
+                        noteGain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.4);
+                        noteOsc.connect(noteGain);
+                        noteGain.connect(audioCtx.destination);
+                        noteOsc.start(now + idx * 0.12);
+                        noteOsc.stop(now + idx * 0.12 + 0.4);
+                    });
+                }
+            } catch (e) {
+                console.log("Audio synthesis error:", e);
+            }
+        }
+
+        function toggleAudio() {
+            appState.soundEnabled = !appState.soundEnabled;
+            const icon = document.getElementById('sound-icon');
+            const text = document.getElementById('sound-text');
+            if (appState.soundEnabled) {
+                icon.className = 'fa-solid fa-volume-high';
+                text.innerText = '효과음 On';
+                playSound('click');
+            } else {
+                icon.className = 'fa-solid fa-volume-xmark';
+                text.innerText = '효과음 Off';
+            }
+        }
+
+        function showScreen(screenId) {
+            playSound('click');
+            ['start-screen', 'game-screen', 'result-screen', 'guide-screen'].forEach(id => {
+                const el = document.getElementById(id);
+                if (id === screenId) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+            appState.screen = screenId;
+
+            if (screenId === 'guide-screen') {
+                renderGuideDictionary();
+            }
+        }
+
+        // RENDER BINS (Interactive Containers with Drag & Drop Targets Only)
+        function renderBins() {
+            const binsContainer = document.getElementById('bins-grid');
+            binsContainer.innerHTML = '';
+
+            RECYCLING_BINS.forEach(bin => {
+                const binEl = document.createElement('div');
+                binEl.className = `${bin.color} ${bin.hover} bin-hover text-white rounded-2xl p-2.5 sm:p-3 shadow-lg border-2 border-white/20 flex flex-col items-center justify-between text-center min-h-[105px] sm:min-h-[120px] select-none relative group cursor-default`;
+                binEl.dataset.binId = bin.id;
+
+                binEl.innerHTML = `
+                    <div class="text-xl sm:text-2xl mt-1 drop-shadow pointer-events-none">
+                        <i class="fa-solid ${bin.icon}"></i>
+                    </div>
+                    <div class="my-auto pointer-events-none">
+                        <div class="font-black text-xs sm:text-sm tracking-tight leading-snug">${bin.name}</div>
+                        <div class="text-[10px] text-white/80 hidden sm:block mt-0.5 font-medium leading-none">${bin.desc}</div>
+                    </div>
+                    <div class="w-full bg-black/30 rounded-full py-0.5 text-[9px] font-black mt-1 group-hover:bg-white group-hover:text-slate-900 transition pointer-events-none">
+                        여기로 드래그
+                    </div>
+                `;
+
+                // Click is explicitly disabled with a helpful prompt toast
+                binEl.addEventListener('click', () => {
+                    showToast(false, '⚠️ 쓰레기 그림을 수거함으로 드래그해서 넣으세요!');
+                });
+
+                // HTML5 Drag & Drop Target Event Handlers
+                binEl.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    binEl.classList.add('bin-drag-target');
+                });
+
+                binEl.addEventListener('dragleave', () => {
+                    binEl.classList.remove('bin-drag-target');
+                });
+
+                binEl.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    binEl.classList.remove('bin-drag-target');
+                    handleSortAttempt(bin.id);
+                });
+
+                binsContainer.appendChild(binEl);
+            });
+        }
+
+        // TOUCH & POINTER DRAG CONTROLLER FOR MOBILE & DESKTOP
+        let isDragInitialized = false;
+
+        function setupCardDragEvents() {
+            if (isDragInitialized) return;
+            const card = document.getElementById('trash-item-card');
+            if (!card) return;
+
+            let isDragging = false;
+            let startX = 0, startY = 0;
+
+            const onPointerDown = (e) => {
+                if (e.button && e.button !== 0) return;
+                isDragging = true;
+                const touch = e.touches ? e.touches[0] : e;
+                startX = touch.clientX;
+                startY = touch.clientY;
+                card.style.transition = 'none';
+                card.classList.add('z-50', 'shadow-2xl');
+            };
+
+            const onPointerMove = (e) => {
+                if (!isDragging) return;
+                const touch = e.touches ? e.touches[0] : e;
+                const dx = touch.clientX - startX;
+                const dy = touch.clientY - startY;
+
+                card.style.transform = `translate(${dx}px, ${dy}px) scale(1.05) rotate(${dx * 0.04}deg)`;
+
+                // Highlight bin currently hovered under cursor/finger
+                card.style.pointerEvents = 'none';
+                const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                card.style.pointerEvents = 'auto';
+
+                document.querySelectorAll('#bins-grid > div').forEach(bin => {
+                    if (elemBelow && bin.contains(elemBelow)) {
+                        bin.classList.add('bin-drag-target');
+                    } else {
+                        bin.classList.remove('bin-drag-target');
+                    }
+                });
+            };
+
+            const onPointerUp = (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                const touch = e.changedTouches ? e.changedTouches[0] : e;
+
+                card.style.pointerEvents = 'none';
+                const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                card.style.pointerEvents = 'auto';
+
+                card.style.transition = 'transform 0.25s ease';
+                card.style.transform = '';
+                card.classList.remove('z-50');
+
+                document.querySelectorAll('#bins-grid > div').forEach(bin => {
+                    bin.classList.remove('bin-drag-target');
+                    if (elemBelow && bin.contains(elemBelow)) {
+                        const binId = bin.dataset.binId;
+                        if (binId) handleSortAttempt(binId);
+                    }
+                });
+            };
+
+            card.addEventListener('mousedown', onPointerDown);
+            window.addEventListener('mousemove', onPointerMove);
+            window.addEventListener('mouseup', onPointerUp);
+
+            card.addEventListener('touchstart', onPointerDown, { passive: true });
+            window.addEventListener('touchmove', onPointerMove, { passive: true });
+            window.addEventListener('touchend', onPointerUp);
+
+            isDragInitialized = true;
+        }
+
+        // UPDATE HEARTS HUD
+        function updateLivesUI() {
+            const container = document.getElementById('lives-container');
+            container.innerHTML = '';
+            for (let i = 0; i < appState.maxLives; i++) {
+                const heart = document.createElement('i');
+                if (i < appState.lives) {
+                    heart.className = 'fa-solid fa-heart bounce-heart text-rose-500';
+                } else {
+                    heart.className = 'fa-solid fa-heart-crack text-slate-600 opacity-40';
+                }
+                container.appendChild(heart);
+            }
+        }
+
+        // START GAME
+        function startGame(mode, customPlaylist = null) {
+            appState.mode = mode;
+            appState.score = 0;
+            appState.lives = 3;
+            appState.maxLives = 3;
+            appState.currentIndex = 0;
+            appState.correctCount = 0;
+            appState.wrongAnswers = [];
+            appState.isRetryMode = !!customPlaylist;
+            
+            // Set Playlist (Custom for mistake retry, or full randomized database)
+            if (customPlaylist && customPlaylist.length > 0) {
+                appState.playlist = [...customPlaylist].sort(() => Math.random() - 0.5);
+            } else {
+                appState.playlist = [...TRASH_DATABASE].sort(() => Math.random() - 0.5);
+            }
+
+            // Reset UI Displays
+            document.getElementById('score-display').innerText = '0점';
+            document.getElementById('game-mode-badge').innerText = appState.isRetryMode 
+                ? '⚡ 오답 재도전 모드' 
+                : (mode === 'challenge' ? '⚡ 스피드 챌린지' : '🎓 기본 모드');
+            document.getElementById('total-items-count').innerText = appState.playlist.length;
+
+            updateLivesUI();
+
+            const timerContainer = document.getElementById('timer-container');
+            if (mode === 'challenge' && !appState.isRetryMode) {
+                timerContainer.classList.remove('hidden');
+                appState.timer = 60;
+                document.getElementById('timer-display').innerText = appState.timer;
+                
+                if (appState.timerInterval) clearInterval(appState.timerInterval);
+                appState.timerInterval = setInterval(() => {
+                    appState.timer--;
+                    document.getElementById('timer-display').innerText = appState.timer;
+                    if (appState.timer <= 0) {
+                        clearInterval(appState.timerInterval);
+                        endGame();
+                    }
+                }, 1000);
+            } else {
+                timerContainer.classList.add('hidden');
+                if (appState.timerInterval) clearInterval(appState.timerInterval);
+            }
+
+            renderBins();
+            showScreen('game-screen');
+            loadCurrentItem();
+        }
+
+        // RETRY ONLY MISTAKES FUNCTION
+        function retryOnlyMistakes() {
+            const missedItems = appState.wrongAnswers.map(w => w.item);
+            if (missedItems.length > 0) {
+                startGame('practice', missedItems);
+            }
+        }
+
+        // LOAD TRASH ITEM CARD
+        function loadCurrentItem() {
+            if (appState.currentIndex >= appState.playlist.length || appState.lives <= 0) {
+                endGame();
+                return;
+            }
+
+            const item = appState.playlist[appState.currentIndex];
+            document.getElementById('current-item-index').innerText = appState.currentIndex + 1;
+
+            const card = document.getElementById('trash-item-card');
+            const icon = document.getElementById('trash-icon');
+            const name = document.getElementById('trash-name');
+            const desc = document.getElementById('trash-desc');
+
+            card.classList.remove('shake');
+            card.style.transform = '';
+            
+            icon.innerText = item.icon;
+            name.innerText = item.name;
+            desc.innerText = item.desc || "상태와 특징을 확인하고 드래그하세요";
+
+            // HTML5 Drag fallback
+            card.ondragstart = (e) => {
+                card.classList.add('dragging-ghost');
+                e.dataTransfer.setData('text/plain', item.id);
+            };
+            card.ondragend = () => {
+                card.classList.remove('dragging-ghost');
+            };
+
+            setupCardDragEvents();
+        }
+
+        // HANDLE USER SORT ATTEMPT
+        function handleSortAttempt(selectedBinId) {
+            if (appState.currentIndex >= appState.playlist.length || appState.lives <= 0) return;
+
+            const item = appState.playlist[appState.currentIndex];
+            const isCorrect = (selectedBinId === item.correctBin);
+
+            if (isCorrect) {
+                playSound('correct');
+                appState.score += 100;
+                appState.correctCount++;
+                showToast(true, `🎉 정답입니다! (+100점)`);
+            } else {
+                playSound('wrong');
+                appState.lives--;
+                updateLivesUI();
+
+                // Card Shake Animation
+                const card = document.getElementById('trash-item-card');
+                card.classList.add('shake');
+
+                // Save to Mistakes Log
+                const wrongBinObj = RECYCLING_BINS.find(b => b.id === selectedBinId);
+                const correctBinObj = RECYCLING_BINS.find(b => b.id === item.correctBin);
+                
+                appState.wrongAnswers.push({
+                    item: item,
+                    userChosen: wrongBinObj ? wrongBinObj.name : '잘못된 선택',
+                    correctBinName: correctBinObj ? correctBinObj.name : '올바른 수거함'
+                });
+
+                showToast(false, `💔 목숨 1 차감! 정답: [${correctBinObj ? correctBinObj.name : ''}]`);
+
+                // Check Game Over condition
+                if (appState.lives <= 0) {
+                    setTimeout(() => {
+                        endGame();
+                    }, 800);
+                    return;
+                }
+            }
+
+            // Update HUD Score
+            document.getElementById('score-display').innerText = `${appState.score}점`;
+
+            // Advance to next item smooth transition
+            appState.currentIndex++;
+            setTimeout(() => {
+                loadCurrentItem();
+            }, 400);
+        }
+
+        function showToast(isCorrect, message) {
+            const toast = document.getElementById('feedback-toast');
+            toast.innerText = message;
+            toast.className = `absolute z-30 top-1 px-6 py-2.5 rounded-full font-black text-sm shadow-2xl transition-all duration-300 transform border-2 border-white ${
+                isCorrect 
+                ? 'bg-emerald-500 text-white translate-y-0 opacity-100' 
+                : 'bg-rose-500 text-white translate-y-0 opacity-100'
+            }`;
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-4');
+            }, 1200);
+        }
+
+        // FIREWORKS / CONFETTI CELEBRATION EFFECT
+        function triggerFireworks() {
+            playSound('fanfare');
+
+            if (typeof confetti === 'function') {
+                const duration = 3 * 1000;
+                const animationEnd = Date.now() + duration;
+                const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 999 };
+
+                const interval = setInterval(function() {
+                    const timeLeft = animationEnd - Date.now();
+                    if (timeLeft <= 0) {
+                        return clearInterval(interval);
+                    }
+                    const particleCount = 50 * (timeLeft / duration);
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.4), y: Math.random() - 0.2 } }));
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.6, 0.9), y: Math.random() - 0.2 } }));
+                }, 250);
+            }
+        }
+
+        function randomInRange(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        // END GAME & SHOW RESULTS
+        function endGame() {
+            if (appState.timerInterval) clearInterval(appState.timerInterval);
+
+            const total = appState.currentIndex; // Items attempted
+            const accuracy = total > 0 ? Math.round((appState.correctCount / total) * 100) : 0;
+            const isVictory = appState.lives > 0 && appState.correctCount > 0;
+
+            document.getElementById('final-score').innerText = `${appState.score}점`;
+            document.getElementById('final-accuracy').innerText = `${accuracy}%`;
+            document.getElementById('final-correct').innerText = `${appState.correctCount}개`;
+            document.getElementById('final-wrong').innerText = `${appState.wrongAnswers.length}개`;
+
+            const resultTitle = document.getElementById('result-title');
+            const resultSubtitle = document.getElementById('result-subtitle');
+            const resultIcon = document.getElementById('result-badge-icon');
+
+            if (isVictory) {
+                resultTitle.innerText = "🎉 분리수거 미션 성공!";
+                resultSubtitle.innerText = "훌륭합니다! 올바른 분리수거로 지구 환경을 완벽히 지켜내셨습니다!";
+                resultIcon.className = "inline-block p-4 bg-emerald-100 text-emerald-600 rounded-3xl mb-3 shadow-inner";
+                resultIcon.innerHTML = `<i class="fa-solid fa-trophy text-5xl"></i>`;
+                triggerFireworks();
+            } else {
+                resultTitle.innerText = "💔 아쉬워요! 미션 실패";
+                resultSubtitle.innerText = "목숨을 모두 잃었습니다. 오답 노트를 복습하고 다시 도전해 보세요!";
+                resultIcon.className = "inline-block p-4 bg-rose-100 text-rose-600 rounded-3xl mb-3 shadow-inner";
+                resultIcon.innerHTML = `<i class="fa-solid fa-heart-crack text-5xl"></i>`;
+            }
+
+            // Calculate Carbon Savings Stats
+            let totalCo2 = 0;
+            appState.playlist.slice(0, total).forEach(item => {
+                if (!appState.wrongAnswers.some(w => w.item.id === item.id)) {
+                    totalCo2 += (item.co2Savings || 0.1);
+                }
+            });
+            totalCo2 = Math.round(totalCo2 * 100) / 100;
+            const treesSaved = Math.round((totalCo2 * 0.15) * 10) / 10;
+            const energySaved = Math.round(totalCo2 * 250);
+
+            document.getElementById('impact-co2').innerText = totalCo2;
+            document.getElementById('impact-trees').innerText = treesSaved;
+            document.getElementById('impact-energy').innerText = energySaved;
+
+            // Render Mistakes List & Retry Button setup
+            renderMistakesList();
+
+            showScreen('result-screen');
+        }
+
+        function renderMistakesList() {
+            const container = document.getElementById('mistakes-container');
+            const retryBtn = document.getElementById('retry-mistakes-btn');
+            const wrongCountBadge = document.getElementById('wrong-count-badge');
+            container.innerHTML = '';
+
+            if (appState.wrongAnswers.length === 0) {
+                retryBtn.classList.add('hidden');
+                container.innerHTML = `
+                    <div class="bg-emerald-50 text-emerald-800 p-6 rounded-2xl text-center font-bold border border-emerald-200">
+                        👏 완벽합니다! 모든 쓰레기를 정확히 분리수거 하셨어요! 당신은 진정한 재활용 영웅입니다! 🌟
+                    </div>
+                `;
+                return;
+            }
+
+            // Show Retry Mistakes Button
+            retryBtn.classList.remove('hidden');
+            wrongCountBadge.innerText = appState.wrongAnswers.length;
+
+            appState.wrongAnswers.forEach(mistake => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-50 border-l-4 border-rose-500 rounded-r-2xl p-4 shadow-sm text-left';
+                card.innerHTML = `
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-3xl">${mistake.item.icon}</span>
+                            <div>
+                                <h4 class="font-black text-slate-800 text-sm sm:text-base">${mistake.item.name}</h4>
+                                <div class="text-xs space-x-2 mt-0.5">
+                                    <span class="text-rose-600 font-bold">내 선택: ${mistake.userChosen}</span>
+                                    <span class="text-slate-300">|</span>
+                                    <span class="text-emerald-600 font-black">정답: ${mistake.correctBinName}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-2.5 pt-2 border-t border-slate-200 text-xs text-slate-700 leading-relaxed bg-white p-3 rounded-xl border border-slate-100">
+                        <strong class="text-emerald-700 font-black">💡 올바른 배출 팁:</strong> ${mistake.item.explanation}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // DICTIONARY SEARCH & FILTER
+        let activeGuideCategory = 'all';
+
+        function renderGuideDictionary() {
+            const container = document.getElementById('guide-items-grid');
+            const searchVal = (document.getElementById('guide-search').value || '').toLowerCase();
+            container.innerHTML = '';
+
+            const filtered = TRASH_DATABASE.filter(item => {
+                const matchesCat = (activeGuideCategory === 'all' || item.correctBin === activeGuideCategory);
+                const matchesSearch = item.name.toLowerCase().includes(searchVal) || item.explanation.toLowerCase().includes(searchVal);
+                return matchesCat && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-8 text-center text-slate-400 text-sm font-bold">
+                        검색어에 일치하는 쓰레기 정보가 없습니다.
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const binObj = RECYCLING_BINS.find(b => b.id === item.correctBin);
+                const card = document.createElement('div');
+                card.className = 'bg-slate-50 rounded-2xl p-4 border border-slate-200 hover:shadow-md transition flex flex-col justify-between';
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-2xl">${item.icon}</span>
+                                <span class="font-black text-slate-800 text-sm">${item.name}</span>
+                            </div>
+                            <span class="${binObj ? binObj.color : 'bg-slate-500'} text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm">
+                                ${binObj ? binObj.name : '일반'}
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed bg-white p-3 rounded-xl border border-slate-100 font-medium">
+                            ${item.explanation}
+                        </p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function filterGuideCategory(cat) {
+            activeGuideCategory = cat;
+            document.querySelectorAll('.guide-tab').forEach(tab => {
+                tab.className = 'guide-tab px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200';
+            });
+            event.target.className = 'guide-tab active px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white';
+            renderGuideDictionary();
+        }
+
+        function filterGuideItems() {
+            renderGuideDictionary();
+        }
+
+        // Initialize on window load
+        window.onload = function() {
+            renderBins();
+        };
+    </script>
+</body>
+</html>
